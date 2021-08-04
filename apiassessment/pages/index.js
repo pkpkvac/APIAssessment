@@ -1,29 +1,47 @@
-import styles from '../styles/Home.module.css';
 import { useRef, useState } from 'react';
-import Channel from '../components/channel';
+
+import Form from 'react-bootstrap/Form';
+import Container from 'react-bootstrap/Container';
+import Button from 'react-bootstrap/Button';
+import DisplayCard from '../components/ui/DisplayCard';
+
 export default function Home() {
   const idInputRef = useRef();
   const formRef = useRef();
-  const [foundChannel, setFoundChannel] = useState(null);
+  const [foundChannels, setFoundChannels] = useState(null);
   const [isLoading, setIsLoading] = useState();
   const [error, setError] = useState();
+  const [cursor, setCursor] = useState(null);
 
   const fetchChannels = async (event) => {
-    setIsLoading(true);
-
     event.preventDefault();
 
+    setIsLoading(true);
+    setError(false);
+
     try {
-      const response = await fetch(`/api/channel/${idInputRef.current.value}`);
+      const params = [`${idInputRef.current.value}`];
+
+      if (cursor) {
+        // only need to worry about one cursor
+        params.push(`${cursor}`);
+      }
+
+      const response = await fetch(`/api/channel/${params.join('&')}`);
 
       const dataObj = await response.json();
 
-      const data = dataObj.data;
-      console.log(data.game_name);
+      const data = dataObj.data.data;
+      const cursorVal = dataObj.data.pagination.cursor;
 
-      setFoundChannel(data);
+      if (foundChannels) {
+        setFoundChannels(foundChannels.concat(data));
+      } else {
+        setFoundChannels(data);
+      }
+      setCursor(cursorVal);
 
-      formRef.current.reset();
+      // formRef.current.reset();
     } catch {
       setError(true);
     }
@@ -32,28 +50,48 @@ export default function Home() {
 
   const resetHandler = () => {
     formRef.current.reset();
-    setFoundChannel(null);
+    setFoundChannels(null);
+    setCursor(null);
     setError(false);
+    setIsLoading(false);
     return;
   };
 
   return (
-    <div className={styles.container}>
-      Search for a channel ID, e.g: 141981764
-      <form ref={formRef}>
-        <label>
-          <input
-            ref={idInputRef}
+    <Container>
+      <Form ref={formRef} onSubmit={fetchChannels} className='p-4'>
+        <Form.Group className='mb-3' controlId='formChannelSearch'>
+          <Form.Label className='m-1'>Search for a Channel</Form.Label>
+          <Form.Control
             type='text'
-            placeholder='Search for channel ID'
+            placeholder='Channel Name'
+            ref={idInputRef}
           />
-        </label>
-        <button onClick={fetchChannels}>Search for Channel</button>
-      </form>
+          <Form.Text className='text-muted m-1'>example: coolgamers</Form.Text>
+        </Form.Group>
+        <Button className='m-1' variant='primary' type='submit'>
+          Search
+        </Button>
+        <Button className='m-1' onClick={resetHandler}>
+          Clear
+        </Button>
+      </Form>
       {isLoading && <p>Loading...</p>}
       {error && <p>There was an error with the request</p>}
-      <Channel info={foundChannel} />
-      <button onClick={resetHandler}>Clear</button>
-    </div>
+      {foundChannels &&
+        foundChannels.map((channel) => (
+          <DisplayCard key={channel.display_name} channel={channel} />
+        ))}
+      {foundChannels && (
+        <Container>
+          <Button className='m-1' onClick={fetchChannels}>
+            Load more
+          </Button>
+          <Button className='m-1' onClick={resetHandler}>
+            Clear
+          </Button>
+        </Container>
+      )}
+    </Container>
   );
 }
