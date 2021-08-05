@@ -12,8 +12,6 @@ export default async function handler(req, res) {
       query = `query=${params[0]}`;
     }
 
-    console.log('THE CHANNEL', params);
-
     const response = await fetch(
       `https://api.twitch.tv/helix/search/channels?${query}`,
       {
@@ -28,8 +26,6 @@ export default async function handler(req, res) {
 
     if (response.ok) {
       const dataObj = await response.json();
-
-      console.log(dataObj);
 
       res.status(200).send({ data: dataObj });
     } else {
